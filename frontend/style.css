@@ -1,0 +1,136 @@
+:root {
+    --text-color: #ffffffe0;
+    --placeholder-color: #575757;
+    --outgoing-chat-bg: #343541;
+    --incoming-chat-bg: #444654;
+    --outgoing-chat-border: #343541;
+    --incoming-chat-border: #444654;
+    --main-color: rgb(31, 31, 32);
+    --main-color-dark: rgb(22, 22, 22);
+}
+
+body,
+html {
+    height: 100%;
+    margin: 0;
+}
+
+p, strong, em {
+    color: var(--text-color);
+}
+
+
+
+#super-container {
+    width: 100%;
+    height: 100%;
+    background-color: var(--main-color);
+    display: flex;
+    justify-content: center;
+    padding:10px;
+}
+
+#misc-container {
+    width:15%;
+    background-color: var(--main-color-dark);
+}
+
+#response-and-chat-container {
+    width: 100%;
+    height: 100%;
+    border: 2px solid rgb(0, 0, 0);
+    display: flexbox;
+}
+
+#output-window-container {
+    height:73%;
+    border: 2px solid rgb(127, 85, 133);
+    margin-left: 25%;
+    margin-right: 25%;
+    position: relative;
+}
+
+#user-action-container-holder {
+    display:flex;
+    height: 224px;            /* height problem */
+    border: 2px solid rgb(255, 6, 6); 
+}
+
+#chosen-file-info-container {
+    width: 410px;
+    overflow-y: auto;
+    border: 2px solid rgb(67, 32, 221);
+    word-wrap: break-word;
+    position: relative;
+    padding-left: 8px;
+}
+
+#user-action-container {
+    display: flex;
+    border: 2px solid rgb(42, 104, 36);
+    width: fit-content;
+    position: relative;
+}
+
+#audio-action-container {
+    height: fit-content;
+    justify-content: center;
+    display: flex;
+    border-color: aqua;
+    left: -33px;
+    position: relative;
+}
+
+#select-audio-file-btn {
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+}
+
+#file-length-text {
+    color: rgb(69, 131, 211);
+}
+
+#chosen-file-name-text {
+    color:rgb(131, 47, 36);
+}
+
+#prompt-form-container {
+    width: fit-content;
+    height: fit-content;
+    border: 1px solid rgb(70, 70, 70);
+    border-radius: 12px;
+    margin-left: 100px;
+    transform: translateX(-115px);
+}
+
+#prompt-text-area {
+    width: 520px;
+    height: 45px;
+    padding:8.3px;
+    margin-left: 7px;
+    resize: none;
+    background-color: var(--main-color);
+    border: none;
+    color: var(--text-color);
+    transform: translateY(5px);
+}
+
+#prompt-text-area:focus {
+    outline: none;
+}
+
+#prompt-form-container:focus-within {
+    border-color: rgb(109, 109, 109);
+}
+
+#send-btn {
+    transform: translateY(-13px);
+    margin-right: 9px;
+}
+
+#audio-file-icon {
+    height: 50px;
+}
+
