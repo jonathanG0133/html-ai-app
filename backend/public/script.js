@@ -14,6 +14,7 @@ let selectedAudioFile;
 
 fileInput.addEventListener('change', function(event) {
     selectedAudioFile = event.target.files[0];
+    loadFileDialogBtn.style.display = 'block';
 });
 
 // Load file-knapp laddar upp råtext till backend
