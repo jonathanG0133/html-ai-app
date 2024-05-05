@@ -52,7 +52,7 @@ const upload = multer({
 
 let whisperFullTranscript;
 
-//            Whisper 
+//            Whisper,     req måste pre-processas på något sätt
 app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
      try {
         const openai = initializeOpenAI();
@@ -61,7 +61,7 @@ app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
         model: "whisper-1"
         });
     } catch (error) {
-        console.error('-----------------transcribeAudio catch : Error transcribing audio:', error);
+        console.error('-----------------transcribeAudio catch : Error transcribing audio:', error); // Blir fångad när man trycker "Click to prepare AI with your file"
         return null;
     }
 });

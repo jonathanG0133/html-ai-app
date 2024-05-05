@@ -3,7 +3,7 @@ export function facadeLoadTranscriptInBackend(audioFile) {
     const formData = new FormData();
     formData.append('audioFile', audioFile);
 
-    fetch('http://localhost:3000/api/transcribe', {
+    fetch('http://localhost:3000/api/transcribe', { // --------
         method: 'POST',
         body: formData,
     });

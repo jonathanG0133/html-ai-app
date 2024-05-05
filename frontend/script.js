@@ -40,7 +40,7 @@ fileInput.addEventListener('change', function() {
 
 // Load file-knapp laddar upp råtext till backend
 loadFileDialogBtn.addEventListener('click', async function() {
-    await facadeLoadTranscriptInBackend(currentLoadedAudio);
+    await facadeLoadTranscriptInBackend(currentLoadedAudio);   // -----
 });
 
 // Prompt SEND funktionalitet
