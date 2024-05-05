@@ -1,4 +1,4 @@
-import { facadeLoadTranscript, facadeExtract } from './facade.js';
+import { facadeLoadTranscriptInBackend, facadeExtract } from './facade.js';
 
 const audioActionContainer = document.getElementById('audio-action-container')
 const fileInput = document.getElementById('select-audio-file-btn')
@@ -9,14 +9,13 @@ const chatWindowText = document.getElementById('text-response')
 const promptSubmission = document.getElementById('prompt-text-area')
 const sendBtn = document.getElementById('send-btn')
 
-let currentPickedAudio;
-let fullTranscript;
+let currentLoadedAudio;
 
 audioActionContainer.addEventListener('click', function() {
     fileInput.click(); 
 });
 
-// Handle file change
+// File change
 fileInput.addEventListener('change', function() {
     const selectedFile = this.files[0];
     chosenFileNameText.textContent = selectedFile.name;
@@ -33,45 +32,37 @@ fileInput.addEventListener('change', function() {
             chosenFileLengthText.textContent = `File length: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
         });
     };
+    loadFileDialogBtn.style.display = "block";
     console.log('fileinput listener, a file was chosen');
-    currentPickedAudio = this.files[0];
+    currentLoadedAudio = this.files[0];
     reader.readAsArrayBuffer(selectedFile);
 });
 
+// Load file-knapp laddar upp råtext till backend
 loadFileDialogBtn.addEventListener('click', async function() {
-    fullTranscript = await facadeLoadTranscript(currentPickedAudio);
+    await facadeLoadTranscriptInBackend(currentLoadedAudio);
 });
 
 // Prompt SEND funktionalitet
-promptSubmission.addEventListener('keypress', async function(event) {
+promptSubmission.addEventListener('keypress', function(event) {
     if (event.key === 'Enter') {
         handlePromptSubmission();
     }
 });
-// // //
+// 
 sendBtn.addEventListener('click', function() {
     handlePromptSubmission();
 })
-// // // // // // // //
+// // // // // 
 
-// Vad ska hända efter entertangent?
-async function handlePromptSubmission(promptSubmission) {
-    if(fullTranscript !== null) {
-        console.log('handlePromptSubmission > fullTranscript exists')
-        try {
-            generateResponseVisual(
-                facadeExtract(promptSubmission, fullTranscript)
-                );
-        } catch (error) {
-            console.error('Error extracting specifics from transcript with ChatGPT: ' + error)
-        }
-    } else {
-        console.log('Cannot transcribe with ChatGPT because no audio was loaded beforehand')
-    }
+// Vad ska hända efter SEND?
+function handlePromptSubmission(promptSubmission) {
+    generateResponseVisual(
+        facadeExtract(promptSubmission)
+    );
+} 
 
-}
-
-// Sets chat window text on screen, text-roller loop, appends (hejdå   -> hej + 'd')
+// Visuell text-roller loop för ChatGPT responser
 function generateResponseVisual(response) {
     console.log('generating visual response')
     let index = 0;

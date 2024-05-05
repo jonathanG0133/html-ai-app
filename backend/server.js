@@ -17,80 +17,54 @@ app.listen(3000, () => {
 
 app.use(express.json());
 
-// OpenAI init
-function initOpenAI() {
-    try {
-        const openai = new OpenAI({
-            apiKey: process.env.API_KEY
-        });
-        console.log('initOpenAI success');
-        return openai;
 
-    } catch (error) {
-        console.error('Error initializing OpenAI API with key', error);
-        return null;
-    }
+function initializeOpenAI() {
+  try {
+    const openai = new OpenAI({
+      apiKey: process.env.API_KEY
+    });
+    return openai;
+  } catch (error) {
+    console.error("Error initializing OpenAI API with key", error);
+    return null;
+  }
 
 }
 
-// Define multer storage
 const multer = require('multer');
+const { multipartFormRequestOptions } = require('openai/uploads');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/') // Set destination folder for uploaded files
+        cb(null, 'uploads/') 
     },
     filename: function (req, file, cb) {
-        cb(null, file.originalname) // Keep original file name
+        cb(null, file.originalname) 
     }
 });
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 1024 * 1024 * 1024 // Set max file size to 1GB
+        fileSize: 1024 * 1024 * 1024 
     }
 });
 
-app.post('/api/transcribe', upload.single('audioFile'), async (req, res) => {
-    try {
-        const transcription = await transcribeAudio(req.body.audioFile);
-        res.json({ transcription });
-    } catch (error) {
-        console.error('Error transcribing audio file:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
-async function transcribeAudio(audioFile) {
-    try {
-        const openai = initOpenAI();
-        const whisperFullTranscript = await openai.audio.transcriptions.create({
-            file: audioFile,
-            model: 'whisper-1',
-            response_format: 'text'
+
+let whisperFullTranscript;
+
+//            Whisper 
+app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
+     try {
+        const openai = initializeOpenAI();
+        whisperFullTranscript = await openai.audio.transcriptions.create({
+        file: req.file,
+        model: "whisper-1"
         });
-        return whisperFullTranscript;
     } catch (error) {
-        console.error('Error transcribing audio:', error);
+        console.error('-----------------transcribeAudio catch : Error transcribing audio:', error);
         return null;
     }
-}
-
-// Function to delete audio file from multer storage
-async function deleteAudioFileFromStorage(file) {
-    try {
-        fs.unlink(file.path); // Delete the file from multer storage
-        console.log('Audio file deleted from multer storage:', file.path);
-    } catch (error) {
-        console.error('Error deleting audio file from multer storage:', error);
-    }
-}
-
-
-
-
-
-
-
+});
 
 
 
@@ -99,12 +73,12 @@ async function deleteAudioFileFromStorage(file) {
 
 
 //           ChatGPT-4
-app.post('/api/submit-prompt', async (req, res) => {
-    const { promptSubmission } = req.body;
+app.post('/api/completion', async (req, res) => {
+    const prompt  = req.body;
+    console.log("Your prompt: " + req.body)
 
-    // Handle prompt submission
     try {
-        const transcriptCompletion = await handlePromptSubmission(promptSubmission);
+        const transcriptCompletion = await handlePromptSubmission(prompt);
         res.json({ transcriptCompletion });
     } catch (error) {
         console.error('Error handling prompt submission:', error);
@@ -113,3 +87,26 @@ app.post('/api/submit-prompt', async (req, res) => {
 
 });
 
+//           Prompt / extraction
+async function handlePromptSubmission(prompt) {
+    if (prompt !== null) {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "assistant", content: `${prompt} ${whisperFullTranscript}`}],
+        stream: true
+      });
+
+      transcription = completion.text;
+    }
+
+}
+
+/* Funktion som ska bort fil från "uploads" efter att råtexten från filen hämtats in
+async function deleteAudioFileFromStorage(file) {
+    try {
+        fs.unlink(file.path); // Delete the file from multer storage
+        console.log('Audio file deleted from multer storage:', file.path);
+    } catch (error) {
+        console.error('Error deleting audio file from multer storage:', error);
+    }
+}*/
