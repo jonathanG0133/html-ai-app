@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const { OpenAI } = require('openai')
-const fs = require('fs');
 
 require('dotenv').config();
 
@@ -17,6 +16,8 @@ app.listen(3000, () => {
 
 app.use(express.json());
 
+app.use(express.static('public'));
+
 
 function initializeOpenAI() {
   try {
@@ -30,34 +31,22 @@ function initializeOpenAI() {
   }
 
 }
-
+const fs = require('node:fs')
 const multer = require('multer');
-const { multipartFormRequestOptions } = require('openai/uploads');
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/') 
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname) 
-    }
-});
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 1024 * 1024 * 1024 
-    }
-});
+const upload = multer({ dest: 'uploads/ '})
 
 
 
-let whisperFullTranscript;
+
+let whisperFullTranscript = "The introduction of your book can make or break a readers decision to buy it.That might sound like a lot of pressure, but thats because it kind of is—your books introduction is your books first impression (aside from the cover), and it’s important to make a good one. Regardless of what you write, whether it’s a fiction novel or a nonfiction book, you want to put your best foot forward. Thankfully, there are plenty of great book introductions out there for us to learn from. In this article, well cover a list of book introduction examples across five genres to give you a sense of what a good book introduction looks like. Then, we’ll talk about what these introductions have in common and what makes a good book introduction for fiction and nonfiction books. By the end, youll be able to apply these lessons to your own work, and youll be able to spot both weak and strong introductions from a mile away.";
+
 
 //            Whisper,     req måste pre-processas på något sätt
 app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
      try {
         const openai = initializeOpenAI();
         whisperFullTranscript = await openai.audio.transcriptions.create({
-        file: req.file,
+        file: fs.createReadStream(req.file.path),
         model: "whisper-1"
         });
     } catch (error) {
@@ -75,7 +64,7 @@ app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
 //           ChatGPT-4
 app.post('/api/completion', async (req, res) => {
     const prompt  = req.body;
-    console.log("Your prompt: " + req.body)
+    console.log("Your prompt: " + prompt)
 
     try {
         const transcriptCompletion = await handlePromptSubmission(prompt);
@@ -96,7 +85,7 @@ async function handlePromptSubmission(prompt) {
         stream: true
       });
 
-      transcription = completion.text;
+      return completion;
     }
 
 }

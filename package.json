@@ -3,8 +3,10 @@
     "concurrently": "^8.2.2"
   },
   "scripts": {
-    "start": "concurrently \"cd backend && node server.js\" \"cd frontend && npm start\""
-  },
+    "start-backend": "cd backend && node server.js",
+    "start-frontend": "cd public && npm start",
+    "start": "concurrently \"npm run start-backend\" \"npm run start-frontend\""
+},
   "dependencies": {
     "openai": "^4.38.5"
   }
