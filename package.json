@@ -3,7 +3,8 @@
     "concurrently": "^8.2.2"
   },
   "scripts": {
-    "start": "cd backend && node server.js"
+    "start": "cd backend && node server.js",
+    "postinstall": "node postinstall.js"
   },
   "dependencies": {
     "openai": "^4.38.5",
