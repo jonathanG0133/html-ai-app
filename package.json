@@ -4,8 +4,9 @@
   },
   "scripts": {
     "start": "cd backend && node server.js"
-},
+  },
   "dependencies": {
-    "openai": "^4.38.5"
+    "openai": "^4.38.5",
+    "sqlite3": "^5.1.7"
   }
 }

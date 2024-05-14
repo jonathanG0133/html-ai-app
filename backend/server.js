@@ -2,11 +2,27 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const { OpenAI } = require('openai')
+const fs = require('node:fs');
+const fsPromise = require('node:fs/promises');
+const multer = require('multer');
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname)
+    }
+});
+
+const upload = multer({ storage: storage });
+
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('\db.db')
 
 require('dotenv').config();
 
 app.use(cors({
-    origin: 'http://127.0.0.1:5500',
+    origin: 'http://127.0.0.1:3000',
     optionsSuccessStatus: 200
 }));
 
@@ -15,87 +31,141 @@ app.listen(3000, () => {
 });
 
 app.use(express.json());
-
+app.use(express.text());
 app.use(express.static('public'));
 
 
-function initializeOpenAI() {
+async function initializeOpenAI() {
   try {
     const openai = new OpenAI({
       apiKey: process.env.API_KEY
     });
     return openai;
   } catch (error) {
-    console.error("Error initializing OpenAI API with key", error);
+      console.error("Error initializing OpenAI API with key", error);
     return null;
   }
 
 }
-const fs = require('node:fs')
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/ '})
 
 
 
+let conversationId = null;
 
-let whisperFullTranscript = "The introduction of your book can make or break a readers decision to buy it.That might sound like a lot of pressure, but thats because it kind of is—your books introduction is your books first impression (aside from the cover), and it’s important to make a good one. Regardless of what you write, whether it’s a fiction novel or a nonfiction book, you want to put your best foot forward. Thankfully, there are plenty of great book introductions out there for us to learn from. In this article, well cover a list of book introduction examples across five genres to give you a sense of what a good book introduction looks like. Then, we’ll talk about what these introductions have in common and what makes a good book introduction for fiction and nonfiction books. By the end, youll be able to apply these lessons to your own work, and youll be able to spot both weak and strong introductions from a mile away.";
-
-
-//            Whisper,     req måste pre-processas på något sätt
-app.post('/api/transcribe', upload.single('audioFile'), async (req) => {
+//          Whisper transcribe
+app.post('/api/transcribe', upload.single('audioFile'), async (req, res) => {
      try {
-        const openai = initializeOpenAI();
-        whisperFullTranscript = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(req.file.path),
-        model: "whisper-1"
+        const openai = await initializeOpenAI();
+
+        const filePath = req.file.path;
+        console.log('transcription pending ...')
+
+        transcript = await openai.audio.transcriptions.create({
+            file: fs.createReadStream(filePath),
+            model: 'whisper-1',
+            response_format: "text"
         });
+
+        db.run('INSERT INTO conversations (transcript) VALUES (?)', [transcript], function(error) { 
+          if (error) {
+              console.error('Error inserting conversation record:', error);
+              res.status(500).send(false);
+          } else {
+              deleteAudioFile(filePath);
+              conversationId = this.lastID
+              console.log(transcript);
+              console.log('New conversation created with ID:', conversationId);
+              console.log(filePath, conversationId)
+              res.json({ filePath, conversationId }); // ???
+          }
+        });
+
     } catch (error) {
-        console.error('-----------------transcribeAudio catch : Error transcribing audio:', error); // Blir fångad när man trycker "Click to prepare AI with your file"
-        return null;
+        console.error('transcribeAudio catch : Error transcribing audio:', error);
+        res.send(error);
     }
 });
 
-
-
-
-
-
-
-//           ChatGPT-4
+//          ChatGPT-4
 app.post('/api/completion', async (req, res) => {
-    const prompt  = req.body;
-    console.log("Your prompt: " + prompt)
-
     try {
-        const transcriptCompletion = await handlePromptSubmission(prompt);
-        res.json({ transcriptCompletion });
+        const prompt = req.body;
+        const openai = await initializeOpenAI();
+
+        const rows = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM messages WHERE conversation_id = ?', [conversationId], (err, rows) => {
+                if (err) {
+                    console.error('Error fetching previous messages:', err);
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+
+        const conversationHistory = rows.map(row => `${row.body}`).join('\n');
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+                { role: "system", content: `I'm your helpful assistant designed to assist with discussing and extracting information from the following transcript: ${transcript}. End of transcript. My goal is to provide insights and support based on the content we're analyzing. Even if the query goes beyond the transcript, I'm here to assist with any relevant questions or topics.` },
+                { role: "user", content: `Here's a prompt: ${prompt}. Please use this prompt to extract specific details from the transcript. Additionally, here's the conversation history between us for context:\n${conversationHistory}.` }
+            ],
+            stream: false
+        });
+
+        const extractionText = completion.choices[0].message.content;
+
+// push user message to db
+        db.run('INSERT INTO messages (role, body, conversation_id, timestamp) VALUES (?, ?, ?, ?)',
+            ['user', 'user asked: ' + prompt, conversationId, currentDateAndTime], function (error) {
+                if (error) {
+                    console.error('Error inserting user message: ', error);
+                    res.status(500).send(false);
+                } else {
+                    console.log('Prompt was: ', prompt);
+                    console.log('New user message created with message_id: ', this.lastID, '~ Conversation ID: ', conversationId);
+                }
+            });
+// push chatgpt message to db
+        db.run('INSERT INTO messages (role, body, conversation_id) VALUES (?, ?, ?)',
+            ['chatgpt', 'chatgpt responded: ' + extractionText, conversationId], function (error) {
+                if (error) {
+                    console.error('Error inserting chatgpt message: ', error);
+                    res.status(500).send(false);
+                } else {
+                    console.log('The following was extracted: ', extractionText);
+                    console.log('New ChatGPT message created with message_id: ', this.lastID, '~ Conversation ID: ', conversationId);
+                    console.log('HISTORY for Conversation ID: ' + conversationId + '\n['  + conversationHistory + '\n]');
+                    res.json(completion);
+                }
+            });
+
     } catch (error) {
-        console.error('Error handling prompt submission:', error);
+        console.error('Error handling prompt submission: ', error);
         res.status(500).json({ error: 'Internal server error' });
     }
-
 });
 
-//           Prompt / extraction
-async function handlePromptSubmission(prompt) {
-    if (prompt !== null) {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "assistant", content: `${prompt} ${whisperFullTranscript}`}],
-        stream: true
-      });
 
-      return completion;
-    }
 
-}
 
-/* Funktion som ska bort fil från "uploads" efter att råtexten från filen hämtats in
-async function deleteAudioFileFromStorage(file) {
+
+const deleteAudioFile = async (filePath) => {
     try {
-        fs.unlink(file.path); // Delete the file from multer storage
-        console.log('Audio file deleted from multer storage:', file.path);
+        await fsPromise.unlink(filePath);
+        console.log('Audio file deleted successfully:', filePath);
     } catch (error) {
-        console.error('Error deleting audio file from multer storage:', error);
+        console.error('Error deleting audio file:', error);
     }
-}*/
+};
+
+const currentDateAndTime = new Date().toLocaleString('sv-SE', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+});
+
+
