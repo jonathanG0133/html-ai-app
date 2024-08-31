@@ -4,6 +4,8 @@ const app = express();
 const { OpenAI } = require('openai')
 const fs = require('node:fs');
 const fsPromise = require('node:fs/promises');
+require('dotenv').config();
+
 const multer = require('multer');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -19,7 +21,6 @@ const upload = multer({ storage: storage });
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('\db.db')
 
-require('dotenv').config();
 
 app.use(cors({
     origin: 'http://127.0.0.1:3000',
@@ -108,8 +109,8 @@ app.post('/api/completion', async (req, res) => {
         const completion = await openai.chat.completions.create({
             model: "gpt-4",
             messages: [
-                { role: "system", content: `I'm your helpful assistant designed to assist with discussing and extracting information from the following transcript: ${transcript}. End of transcript. My goal is to provide insights and support based on the content we're analyzing. Even if the query goes beyond the transcript, I'm here to assist with any relevant questions or topics.` },
-                { role: "user", content: `Here's a prompt: ${prompt}. Please use this prompt to extract specific details from the transcript. Additionally, here's the conversation history between us for context:\n${conversationHistory}.` }
+                { role: "system", content: `Jag är din hjälpsamma assistent som är designad för att hjälpa till med att diskutera och extrahera information från följande transkript: ${transcript}. Slut på transkript. Mitt mål är att ge insikter och stöd baserat på innehållet vi analyserar. Även om frågan går bortom transkriptet, är jag här för att hjälpa till med alla relevanta frågor eller ämnen.` },
+                { role: "user", content: `Här kommer en fråga: ${prompt}. Använd denna fråga för att extrahera specifika detaljer från transkriptet. Här är vår tidigare konversationhistorik :${conversationHistory}. Du måste svara på engelska om frågan är på engelska` }
             ],
             stream: false
         });
